@@ -1,0 +1,46 @@
+{
+  "API_connection": "C:/00_GIT/DNT_cabin_availability_system/CREDENTIALS/credentials.json",
+  "Token": "C:/00_GIT/DNT_cabin_availability_system/CREDENTIALS/token.json",
+  "SCOPES": ["https://www.googleapis.com/auth/spreadsheets"],
+
+  "system_months_to_check_ahead": 3,
+
+  "visbook_base_availability_api_url": "https://ws.visbook.com/8/api/",
+  "visbook_base_store_api_url": "https://ws.visbook.com/8/api/!ID!/webproducts",
+  "visbook_base_store_api_url_id_sign": "!ID!",
+
+  "temp_file_location": "C:/00_TEMP",
+  "temp_file_basename": "Tilgjengelige_DNT_hytter",
+  "temp_file_sheet_name": "presentation_sheet_name",
+
+
+  "controller_sheet_id": "1pz-npKXX9xxDiVeH-BovhB0rSpMUXsi53B71PYcW4Q4",
+  "controller_data_area": "Kontrolldokument!A:D",
+  "controller_name_field": "Navn",
+  "controller_store_id": "bestillings_system_ID",
+  "controller_product_ids": "List_of_accomodation_ID",
+  "controller_url": "Lenke_ut_no",
+
+  "presentation_sheet_id": "1yWiKSriyWDgJNoIclXuu6M0ZyyRQL-YCwZxDJpQwXCA",
+  "presentation_sheet_name": "Tilgjengelig",
+  "presentation_col_link": "Lenke til bestillingsystem",
+  "presentation_col_max_products": "Antall mulige reservasjoner",
+  "presentation_col_last_gathered": "Sist sjekket",
+
+  "presentation_normal_font_size": 10,
+  "presentation_normal_bold": false,
+
+  "presentation_heading_font_size": 14,
+  "presentation_heading_bold": true,
+  "presentation_heading_sign": "H#",
+
+  "presentation_weekend_bold": true,
+  "presentation_weekend_font_size": 10,
+  "presentation_weekend_border_left_style": "SOLID",
+  "presentation_weekend_border_left_width": 2,
+
+
+  "presentation_row_nr_table_heading": 8
+
+
+}
