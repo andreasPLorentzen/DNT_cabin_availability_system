@@ -50,7 +50,7 @@ def intF(str):
         try:
             return int(str)
         except:
-            return 0
+            return 1
 
 
 ## General config
