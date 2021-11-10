@@ -8,6 +8,7 @@ import pandas as pd
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 
+START_TIME = dt.datetime.now()
 
 # functions for settings to be global
 def json_to_dict(file) -> dict():
@@ -20,14 +21,33 @@ def gs(wanted_setting): #gs = Get Setting
     '''Retrives the given setting from the settings file - note that it only reads the file once and never again'''
     if not 'SETTINGS' in globals():
         global SETTINGS
-        SETTINGS = json_to_dict('./config/settings.json')
+        SETTINGS = json_to_dict('C:/00_GIT/DNT_cabin_availability_system/v02 - Google docs/config/settings.json')
     return SETTINGS[wanted_setting]
 
+def logfile( status="", start_time="", number_of_api_requests=0):
+    try:
+        import csv
+        import os
+        from datetime import date,  datetime
+        file =r"C:\00_GIT\DNT_cabin_availability_system\v02 - Google docs\statistics.csv"
+        line = ["\n" + str(date.today()),
+                str(start_time.strftime("%H:%M:%S")),
+                str(datetime.now().strftime("%H:%M:%S")),
+                "DNT_cabin_availability_system_v0.2",
+                str(os.getlogin()),
+                str(status),
+                str(number_of_api_requests),
+                str(os.path.basename(__file__))]
+
+        with open(file, 'a') as f:
+            writer = csv.writer(f, delimiter=";",lineterminator='')
+            writer.writerow(line)
+        pass
+    except:
+        print("could not print to logfile")
 
 # This is mostly gathered from https://developers.google.com/sheets/api/quickstart/python
 def Connect_With_API():
-
-
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -67,37 +87,51 @@ def intF(str):
         except:
             return 1
 
+def printF(level, *string):
+    if gs("silent") == "all":
+        print(*string)
+
+    elif level <= int(gs("silent")):
+        if level == 0:
+            print(*string)
+        else:
+            print("\t"*level, *string)
+    return True
+
 def Gather_data_from_API(df, number_of_months_to_check_ahead):
     # gather the data
     #df[gs("presentation_col_last_gathered")] = ""
+    number_of_api_requests = 0
     months_to_check = get_next_months_as_list(number_of_months_to_check_ahead)
+    #print(df)
+
     for index, row in df.iterrows():
+        printF(0,f'Gathering data from API for {row[gs("controller_name_field")]}...')
         if "STOP" in str(row[gs("controller_name_field")]):
+            printF(0,"\tStopping")
             break
-        elif row[gs("controller_name_field")] == None or type(row[gs("controller_name_field")]) == float:
+        elif row[gs("controller_name_field")] == None or row[gs("controller_name_field")] == "" or type(row[gs("controller_name_field")]) == float:
+            printF(1,"\tNo name defined")
+            pass
+        elif "H#" in row[gs("controller_name_field")]:
+            printF(1,"\tHeading")
+            pass
+        elif row[gs('controller_store_id')] == None or row[gs('controller_store_id')] == "":
+            printF(1,"\tEmpty or text")
             pass
 
-        elif "H#" in row[gs("controller_name_field")] or row[gs('controller_store_id')] == None:
-            pass
-
-        elif "STOP" in str(row[gs("controller_name_field")]):
-            break
-        # elif row[gs("controller_product_ids")] == None or type(row[gs("controller_product_ids")]) == float:
-        #     pass
-        elif row[gs("controller_product_ids")] == "":
-            pass
-
+        ## Getting data
         else:
-            print(row[gs("controller_name_field")])
-
             # Check if store has defined products in control document, if not, find products trough the store api endpoint.
-            if row[gs("controller_product_ids")] == None:
+
+            if row[gs("controller_product_ids")] == None or row[gs("controller_product_ids")] == "":
                 list_of_accommodations = get_products_in_store(row[gs('controller_store_id')])
+                number_of_api_requests += 1
 
             # indicates false product ID. Should be int or string.
             elif type(row[gs("controller_product_ids")]) == float:
-                print("\tType is not recognized as product ID",gs("controller_name_field"),row[gs("controller_product_ids")])
-                list_of_accommodations = []
+                printF(0,"\tType is not recognized as product ID",gs("controller_name_field"),row[gs("controller_product_ids")])
+                list_of_accommodations = [str(row[gs("controller_product_ids")]).split(".")]
 
             else:
                 list_of_accommodations = str(row[gs("controller_product_ids")]).split(",")
@@ -112,11 +146,12 @@ def Gather_data_from_API(df, number_of_months_to_check_ahead):
                     # Creating quarry
                     try:
                         request_url = gs("visbook_base_availability_api_url") + f"{int(row[gs('controller_store_id')])}/availability/{int(accommodation)}/{month[0]}-{month[1]}"
-                        print("\t", request_url)
+                        printF(3,"\t", request_url)
 
                         # Getting data
                         resp = requests.get(url=request_url)
                         data = resp.json()
+                        number_of_api_requests += 1
                         # Adding data to dataframe
                         for step in data['items']:
                             date = step['date'].replace("T00:00:00","")  # just to shorten date in final product. no need for time.
@@ -143,7 +178,7 @@ def Gather_data_from_API(df, number_of_months_to_check_ahead):
     date = dt.datetime.now()
     # output_file = os.path.join(gs("temp_file_location"), date.strftime("%Y-%m-%d") + "_" + gs("temp_file_basename") + ".xlsx")
     # df.to_excel(output_file, sheet_name=gs("temp_file_sheet_name"), startrow=gs("presentation_row_nr_table_heading") - 1, index=False)
-    return df
+    return df, number_of_api_requests
 
 def generate_format_heading(row_nr) -> dict:
     returning = { "repeatCell": {
@@ -182,8 +217,7 @@ def generate_format_date(row_nr, col_nr, bold, border_width, border_style, col_n
                                                       "width": border_width
                                                   }
                                               }
-
-                                              }
+                                            }
                     },
                     "fields": "userEnteredFormat.textFormat,userEnteredFormat.borders"
             }
@@ -196,14 +230,14 @@ def get_products_in_store(store_id) -> list:
         return []
     request_url = gs("visbook_base_store_api_url").replace(gs("visbook_base_store_api_url_id_sign"),str(store_id))
 
-    print("\tGathering products from store-ID api: ", request_url)
+    printF(1,"Gathering products from store-ID api: ", request_url)
     resp = requests.get(url=request_url)
     data = resp.json()  # Check the JSON Response Content documentation below
     for row in data:
         if "webProductId" in row.keys():
             list_of_product_ids_to_return.append(row["webProductId"])
 
-    print("\tFound {0} products.".format(len(list_of_product_ids_to_return)))
+    printF(1,"Found {0} products.".format(len(list_of_product_ids_to_return)))
 
     return list_of_product_ids_to_return
 
@@ -254,11 +288,9 @@ def main():
 
     control_document_df = pd.DataFrame(data[1:], columns=data[0])
 
-
-
     # Check if control document is empty
     if control_document_df.empty:
-        print('No data found in control document.')
+        printF(0,'No data found in control document.')
         exit()
     # else:
     #     print(control_document_df)
@@ -266,8 +298,7 @@ def main():
 
     ### Gather data from visbook API
     # As pandas dataframe
-    Gathered_data = Gather_data_from_API(control_document_df, gs("system_months_to_check_ahead"))
-    numpy_version = Gathered_data.to_numpy()
+    Gathered_data, api_requests = Gather_data_from_API(control_document_df, gs("system_months_to_check_ahead"))
 
     Gathered_data[gs("presentation_col_last_gathered")] = Gathered_data[gs("presentation_col_last_gathered")].dt.strftime('%Y-%m-%d %H:%M:%S')
     data = [Gathered_data.columns.tolist()]
@@ -289,11 +320,6 @@ def main():
             # expand the table to remove old values when the months get shorter
         for i in range(0,60):
             data[row].append("")
-
-
-    # # list_of_cols_with_weekends = []
-    # for date in range(0,len(data[0])):
-    #
 
 
 
@@ -383,17 +409,7 @@ def main():
             break
                 #print("\t\t", False)
 
-    # result = service.spreadsheets().batchUpdate(spreadsheetId=gs("presentation_sheet_id"),
-    #                                             body=format_body).execute()
-
     # format weekends
-
-
-    # format url's :
-    # format_body = {
-    #     "requests": []
-    # }
-    # in name
     for row in url_lookup_table:
         format_body["requests"].append(generate_url_name(row_nr=row[0] + gs("presentation_row_nr_table_heading"),
                                                          name=row[1],
@@ -413,7 +429,70 @@ def main():
                                                 body=format_body).execute()
 
 
-if __name__ == '__main__':
-    main()
 
-    print("Success!")
+
+    # Gather data and export it to AGOL formater to read. Notice that the upload part will be in another system, using another python env.
+    # This is done as i do not want to import arcpy into this env. Also, this is by no means a key feature...
+
+    # Get CABIN document
+
+    printF(0,"Prepering AGOL stuff..")
+    sheet = service.spreadsheets()
+    result = sheet.values().get(spreadsheetId=gs("AGOL_CABIN_sheet_id"), range=gs("AGOL_CABIN_data_area")).execute()
+
+    DNT_CABIN_DATA_RAW = result.get('values')
+
+    # convert to dict. a bit lazy today.
+    DNT_CABIN_DATA = {}
+    for cabin in DNT_CABIN_DATA_RAW:
+       DNT_CABIN_DATA[cabin[0]] = {
+           "navn": cabin[0],
+           "eier": cabin[1],
+           "betjeningsgrad": cabin[2],
+           "senger": cabin[3],
+           "url": cabin[4],
+           "long": cabin[5],
+           "lat": cabin[6]
+       }
+
+    #
+    # Combine into single JSON
+    list_of_features = {}
+    for row in data:
+        if row[0] in DNT_CABIN_DATA.keys() and row[0] != data[0][0]:
+            list_of_features[row[0]] = []
+            for col in range(4,len(row)):
+                if row[col] != "":
+                    if data[0][col] == "":
+                        break
+                    new_feature = DNT_CABIN_DATA[row[0]].copy()
+                    new_feature["date"] = data[0][col]
+                    new_feature["max"] = row[3]
+                    new_feature["available"] = row[col]
+                    new_feature["last_checked"] = row[2]
+                    list_of_features[row[0]].append(new_feature)
+                    del new_feature
+        else:
+            printF(1, row[0], "Not in list of cabin data...")
+            if row[0] == "STOP":
+                break
+
+    with open(gs("AGOL_CABIN_temp_json_file_path"), "w", encoding='utf-8') as file:
+        json.dump(list_of_features, file, ensure_ascii=False)
+
+
+
+
+
+    printF(0,"Writing log...")
+    logfile(status="Sucsess",start_time=START_TIME,number_of_api_requests=api_requests)
+if __name__ == '__main__':
+    try:
+        main()
+        print("Success!")
+    except Exception as e:
+        print(e)
+        logfile(status="Failed",start_time=START_TIME)
+        print("Failed")
+
+

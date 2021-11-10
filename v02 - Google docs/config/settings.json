@@ -4,6 +4,7 @@
   "SCOPES": ["https://www.googleapis.com/auth/spreadsheets"],
 
   "system_months_to_check_ahead": 3,
+  "silent": 0,
 
   "visbook_base_availability_api_url": "https://ws.visbook.com/8/api/",
   "visbook_base_store_api_url": "https://ws.visbook.com/8/api/!ID!/webproducts",
@@ -38,9 +39,15 @@
   "presentation_weekend_font_size": 10,
   "presentation_weekend_border_left_style": "SOLID",
   "presentation_weekend_border_left_width": 2,
+  "presentation_row_nr_table_heading": 8,
 
-
-  "presentation_row_nr_table_heading": 8
-
-
+  "AGOL_CABIN_sheet_id": "1pz-npKXX9xxDiVeH-BovhB0rSpMUXsi53B71PYcW4Q4",
+  "AGOL_CABIN_data_area": "Hytte-data!A:G",
+  "AGOL_CABIN_temp_json_file_path": "C://00_TEMP/AGOL_CABINS_AVAILABILITY.json",
+  "AGOL_CABIN_FIELDS": ["name","owner","lvl_service", "beds", "url", "available_date", "checked_date", "available", "max_products"],
+  "AGOL_CABIN_lyrx_path": "C://00_GIT/DNT_cabin_availability_system/v02 - Google docs/config/Availability_data_DNT_cabins.lyrx",
+  "AGOL_CABIN_lyrx_lyr_name": "Availability_data_DNT_cabins",
+  "AGOL_CABIN_data_epsg": 4326,
+  "AGOL_CABIN_DELETE_ALL": false,
+  "AGOL_CABIN_DAYS_AHEAD": 30
 }
