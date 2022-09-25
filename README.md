@@ -13,5 +13,7 @@ This was done in 4-5 hours.
 
 <h3>Updates</h3>
 <h4>2022-09-25</h4>
+
 * Tried to look at problem with ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine. This turnes out to be a problem with the time the request for updating the values takes. Not solved. Probably some stuff that can be done. Will post as an issue.
+
 * Some small bug fixes with dates.
