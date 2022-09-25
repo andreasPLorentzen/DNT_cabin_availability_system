@@ -21,7 +21,7 @@ def gs(wanted_setting): #gs = Get Setting
     '''Retrives the given setting from the settings file - note that it only reads the file once and never again'''
     if not 'SETTINGS' in globals():
         global SETTINGS
-        SETTINGS = json_to_dict('C:/00_GIT/DNT_cabin_availability_system/v02 - Google docs/config/settings.json')
+        SETTINGS = json_to_dict(r'C:\Users\andre\OneDrive\CODE\v02 - Google docs\config\settings.json')
     return SETTINGS[wanted_setting]
 
 def logfile( status="", start_time="", number_of_api_requests=0):
@@ -29,7 +29,7 @@ def logfile( status="", start_time="", number_of_api_requests=0):
         import csv
         import os
         from datetime import date,  datetime
-        file =r"C:\00_GIT\DNT_cabin_availability_system\v02 - Google docs\statistics.csv"
+        file =r"C:\Users\andre\OneDrive\CODE\v02 - Google docs\config\statistics.csv"
         line = ["\n" + str(date.today()),
                 str(start_time.strftime("%H:%M:%S")),
                 str(datetime.now().strftime("%H:%M:%S")),
@@ -54,11 +54,20 @@ def Connect_With_API():
     # time.
     if os.path.exists(gs("Token")):
         creds = Credentials.from_authorized_user_file(gs("Token"), gs("SCOPES"))
-
     # If there are no (valid) credentials available, let the user log in.
+
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                # seems like it wont work as well with refreshing. should therfore delete the token.json file and run
+                # this function again.
+                creds.refresh(Request())
+            except:
+                # delete TPLEM file
+                os.remove(gs("Token"))
+
+                # Run this again
+                return Connect_With_API()
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
                 gs("API_connection"), gs("SCOPES"))
@@ -103,10 +112,10 @@ def Gather_data_from_API(df, number_of_months_to_check_ahead):
     #df[gs("presentation_col_last_gathered")] = ""
     number_of_api_requests = 0
     months_to_check = get_next_months_as_list(number_of_months_to_check_ahead)
-    #print(df)
+    print(df)
 
     for index, row in df.iterrows():
-        printF(0,f'Gathering data from API for {row[gs("controller_name_field")]}...')
+        print(str(row[gs("controller_name_field")]))
         if "STOP" in str(row[gs("controller_name_field")]):
             printF(0,"\tStopping")
             break
@@ -114,14 +123,15 @@ def Gather_data_from_API(df, number_of_months_to_check_ahead):
             printF(1,"\tNo name defined")
             pass
         elif "H#" in row[gs("controller_name_field")]:
-            printF(1,"\tHeading")
+            printF(1,f" {row[gs('controller_name_field')]} is an Heading")
             pass
         elif row[gs('controller_store_id')] == None or row[gs('controller_store_id')] == "":
-            printF(1,"\tEmpty or text")
+            printF(1,"Empty or text")
             pass
 
         ## Getting data
         else:
+            printF(0, f'Gathering data from API for {row[gs("controller_name_field")]}...')
             # Check if store has defined products in control document, if not, find products trough the store api endpoint.
 
             if row[gs("controller_product_ids")] == None or row[gs("controller_product_ids")] == "":
@@ -154,7 +164,7 @@ def Gather_data_from_API(df, number_of_months_to_check_ahead):
                         number_of_api_requests += 1
                         # Adding data to dataframe
                         for step in data['items']:
-                            date = step['date'].replace("T00:00:00","")  # just to shorten date in final product. no need for time.
+                            date = step['date'].replace("T00:00:00","").split("+")[0]  # just to shorten date in final product. no need for time. nor for time difference
                             if date in df:
                                 if step['webProducts'][0]['availability']['available']:
                                     if numpy.isnan(df.at[index, date]):
@@ -169,8 +179,9 @@ def Gather_data_from_API(df, number_of_months_to_check_ahead):
                                     df.at[index, date] = 1
                                 else:
                                     df.at[index, date] = 0
-                    except:
-                        pass
+                    except Exception as e:
+                        print("error?")
+                        print(e)
 
     df.drop(gs("controller_store_id"), 1, inplace=True)
     df.drop(gs("controller_product_ids"), 1, inplace=True)
@@ -267,14 +278,11 @@ def main():
     # Cet credentials for Google API
     creds = Connect_With_API()
     service = build('sheets', 'v4', credentials=creds)
-
-
     # Get control document
     sheet = service.spreadsheets()
     result = sheet.values().get(spreadsheetId=gs("controller_sheet_id"), range=gs("controller_data_area")).execute()
 
     data = result.get('values')
-
     # since this is an afterthought to add url's to the names, we will only create a look-up table between the name and the url, then drop the url field...
     # I know. This is a prototype. stuff like that is allowed.
     url_lookup_table = [] # cant use dict, as there might be several rows with the same name. gah.
@@ -326,11 +334,18 @@ def main():
 
     ### Write back to Google Sheet
     body = {'values': data}
-    result = service.spreadsheets().values().update(
-        spreadsheetId=gs("presentation_sheet_id"),
-        range=gs("presentation_sheet_name") + '!A'+ str(gs("presentation_row_nr_table_heading")) + ':ZZZ500',
-        valueInputOption='RAW',
-        body=body).execute()
+    #print(body)
+    try:
+        result = service.spreadsheets().values().update(
+            spreadsheetId=gs("presentation_sheet_id"),
+            range=gs("presentation_sheet_name") + '!A'+ str(gs("presentation_row_nr_table_heading")) + ':ZZZ500',
+            valueInputOption='RAW',
+            body=body).execute()
+    except Exception as e:
+        print(e)
+    print(result)
+
+    print("STARTING WITH FORMATTING")
 
 
     ### Formatting
@@ -370,7 +385,9 @@ def main():
         checkdate = data[0][col].split("-")
         #print(checkdate)
         if len(checkdate) == 3:
-            d = dt.datetime(year=int(checkdate[0]),month=int(checkdate[1]),day=int(checkdate[2]))
+            print(checkdate)
+            d = dt.datetime(year=int(checkdate[0]),month=int(checkdate[1]),day=int(checkdate[2].split("+")[0])) #had to remove the "+" sign
+            print(d)
             #print("\t", d, d.weekday())
             if d.weekday() == 4:
                 format_body["requests"].append(generate_format_date(row_nr=gs("presentation_row_nr_table_heading"),
@@ -424,7 +441,7 @@ def main():
                                   url=data[row][1],
                                   col_nr=1))
 
-
+    print("batchupdate")
     result = service.spreadsheets().batchUpdate(spreadsheetId=gs("presentation_sheet_id"),
                                                 body=format_body).execute()
 
