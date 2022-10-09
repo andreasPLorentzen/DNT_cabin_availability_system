@@ -1,6 +1,6 @@
 {
-  "API_connection": "C:/00_GIT/DNT_cabin_availability_system/CREDENTIALS/credentials.json",
-  "Token": "C:/00_GIT/DNT_cabin_availability_system/CREDENTIALS/token.json",
+  "API_connection": "C:\\Users\\andre\\OneDrive\\CODE\\v02 - Google docs\\config\\CREDENTIALS\\credentials.json",
+  "Token": "C:\\Users\\andre\\OneDrive\\CODE\\v02 - Google docs\\config\\CREDENTIALS\\token.json",
   "SCOPES": ["https://www.googleapis.com/auth/spreadsheets"],
 
   "system_months_to_check_ahead": 3,
@@ -21,6 +21,8 @@
   "controller_store_id": "bestillings_system_ID",
   "controller_product_ids": "List_of_accomodation_ID",
   "controller_url": "Lenke_ut_no",
+
+  "google_api_rows_pr_request": 15,
 
   "presentation_sheet_id": "1yWiKSriyWDgJNoIclXuu6M0ZyyRQL-YCwZxDJpQwXCA",
   "presentation_sheet_name": "Tilgjengelig",
