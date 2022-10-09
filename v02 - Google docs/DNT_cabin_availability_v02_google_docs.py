@@ -7,6 +7,7 @@ import os.path
 import pandas as pd
 import datetime as dt
 from dateutil.relativedelta import relativedelta
+from time import sleep
 
 START_TIME = dt.datetime.now()
 
@@ -333,17 +334,54 @@ def main():
 
 
     ### Write back to Google Sheet
-    body = {'values': data}
-    #print(body)
-    try:
-        result = service.spreadsheets().values().update(
-            spreadsheetId=gs("presentation_sheet_id"),
-            range=gs("presentation_sheet_name") + '!A'+ str(gs("presentation_row_nr_table_heading")) + ':ZZZ500',
-            valueInputOption='RAW',
-            body=body).execute()
-    except Exception as e:
-        print(e)
-    print(result)
+
+    sheet_row_nr = gs("presentation_row_nr_table_heading") # first row to start data insertion in
+    temp_rows_to_add = []
+    row_count = 0
+    for data_row_nr in range(0,len(data)):
+        row_count += 1
+        if row_count <= gs("google_api_rows_pr_request"):
+            temp_rows_to_add.append(data[data_row_nr])
+
+            if row_count == gs("google_api_rows_pr_request") or data_row_nr == len(data):
+                # insert and reset
+                body = {'values': temp_rows_to_add}
+                row_range = gs("presentation_sheet_name") + '!A' + str(sheet_row_nr) + ':ZZZ' + str(sheet_row_nr + row_count)
+
+                print(row_range)
+
+                try:
+                    result = service.spreadsheets().values().update(
+                        spreadsheetId=gs("presentation_sheet_id"),
+                        range=row_range,
+                        valueInputOption='RAW',
+                        body=body).execute()
+                    print("\tOK!")
+                except Exception as e:
+                    print(f"Something wrong with inserting row nr. {sheet_row_nr}")
+                    print("\t trying to wait 2 min and try again:")
+                    sleep(120)
+                    try:
+                        result = service.spreadsheets().values().update(
+                            spreadsheetId=gs("presentation_sheet_id"),
+                            range=row_range,
+                            valueInputOption='RAW',
+                            body=body).execute()
+                        print("\tOK!")
+                    except Exception as p:
+                        print("\twell, that dident work...")
+                        print(result)
+                        print(body)
+                        print(p)
+                    # print(body)
+                    # print(e)
+
+                finally:
+                    sheet_row_nr += row_count
+                    row_count = 0
+                    temp_rows_to_add = []
+
+
 
     print("STARTING WITH FORMATTING")
 
@@ -385,9 +423,9 @@ def main():
         checkdate = data[0][col].split("-")
         #print(checkdate)
         if len(checkdate) == 3:
-            print(checkdate)
+            #print(checkdate)
             d = dt.datetime(year=int(checkdate[0]),month=int(checkdate[1]),day=int(checkdate[2].split("+")[0])) #had to remove the "+" sign
-            print(d)
+            #print(d)
             #print("\t", d, d.weekday())
             if d.weekday() == 4:
                 format_body["requests"].append(generate_format_date(row_nr=gs("presentation_row_nr_table_heading"),
@@ -441,7 +479,7 @@ def main():
                                   url=data[row][1],
                                   col_nr=1))
 
-    print("batchupdate")
+    #print("batchupdate")
     result = service.spreadsheets().batchUpdate(spreadsheetId=gs("presentation_sheet_id"),
                                                 body=format_body).execute()
 
