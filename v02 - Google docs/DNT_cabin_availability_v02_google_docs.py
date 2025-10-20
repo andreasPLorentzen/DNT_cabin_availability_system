@@ -22,7 +22,7 @@ def gs(wanted_setting): #gs = Get Setting
     '''Retrives the given setting from the settings file - note that it only reads the file once and never again'''
     if not 'SETTINGS' in globals():
         global SETTINGS
-        SETTINGS = json_to_dict(r'C:\Users\andre\OneDrive\CODE\v02 - Google docs\config\settings.json')
+        SETTINGS = json_to_dict(r'C:\00_GIT\DNT_cabin_availability_system\v02 - Google docs\config\settings.json')
     return SETTINGS[wanted_setting]
 
 def logfile( status="", start_time="", number_of_api_requests=0):
@@ -30,7 +30,7 @@ def logfile( status="", start_time="", number_of_api_requests=0):
         import csv
         import os
         from datetime import date,  datetime
-        file =r"C:\Users\andre\OneDrive\CODE\v02 - Google docs\config\statistics.csv"
+        file =r"C:\00_GIT\DNT_cabin_availability_system\v02 - Google docs\statistics.csv"
         line = ["\n" + str(date.today()),
                 str(start_time.strftime("%H:%M:%S")),
                 str(datetime.now().strftime("%H:%M:%S")),
@@ -44,8 +44,9 @@ def logfile( status="", start_time="", number_of_api_requests=0):
             writer = csv.writer(f, delimiter=";",lineterminator='')
             writer.writerow(line)
         pass
-    except:
+    except Exception as e:
         print("could not print to logfile")
+        print(e)
 
 # This is mostly gathered from https://developers.google.com/sheets/api/quickstart/python
 def Connect_With_API():
@@ -183,6 +184,7 @@ def Gather_data_from_API(df, number_of_months_to_check_ahead):
                     except Exception as e:
                         print("error?")
                         print(e)
+        print(f"\tAPI requests so far: {number_of_api_requests}")
 
     df.drop(gs("controller_store_id"), 1, inplace=True)
     df.drop(gs("controller_product_ids"), 1, inplace=True)
@@ -308,6 +310,7 @@ def main():
     ### Gather data from visbook API
     # As pandas dataframe
     Gathered_data, api_requests = Gather_data_from_API(control_document_df, gs("system_months_to_check_ahead"))
+    print("api_ requests: ", api_requests)
 
     Gathered_data[gs("presentation_col_last_gathered")] = Gathered_data[gs("presentation_col_last_gathered")].dt.strftime('%Y-%m-%d %H:%M:%S')
     data = [Gathered_data.columns.tolist()]
@@ -359,8 +362,8 @@ def main():
                     print("\tOK!")
                 except Exception as e:
                     print(f"Something wrong with inserting row nr. {sheet_row_nr}")
-                    print("\t trying to wait 2 min and try again:")
-                    sleep(120)
+                    print(f"\t trying to wait {gs('google_api_wait_when_overload_sec')} seconds and try again:")
+                    sleep(gs("google_api_wait_when_overload_sec"))
                     try:
                         result = service.spreadsheets().values().update(
                             spreadsheetId=gs("presentation_sheet_id"),
@@ -483,7 +486,7 @@ def main():
     result = service.spreadsheets().batchUpdate(spreadsheetId=gs("presentation_sheet_id"),
                                                 body=format_body).execute()
 
-
+    print("batchupdate")
 
 
     # Gather data and export it to AGOL formater to read. Notice that the upload part will be in another system, using another python env.
